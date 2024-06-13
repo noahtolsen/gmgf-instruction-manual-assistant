@@ -9,10 +9,27 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.chat_models import BedrockChat
 from langchain_community.retrievers import AmazonKnowledgeBasesRetriever
-
+from streamlit_cognito_auth import CognitoAuthenticator
 load_dotenv()
 # Set page configuration
-st.set_page_config(page_title='Knowledge Bases for Amazon Bedrock and LangChain 🦜️🔗')
+st.set_page_config(page_title='Green Mountain Girls Farm Instruction Manual Assistant')
+
+
+authenticator = CognitoAuthenticator(
+    pool_id=os.environ.get('POOL_ID'),
+    app_client_id=os.environ.get('CLIENT_ID'),
+    app_client_secret=os.environ.get('CLIENT_SECRET'),
+    use_cookies=False
+)
+
+is_logged_in = authenticator.login()
+if not is_logged_in:
+    st.stop()
+
+
+def logout():
+    print("Logout in example")
+    authenticator.logout()
 
 # ------------------------------------------------------
 # Amazon Bedrock - settings
@@ -67,16 +84,19 @@ chain = (
     .pick(["response", "context"])
 )
 
-st.title("Green Mountain Girls Farm Instruction Manual Assistant")
+
 
 # Clear Chat History function
 def clear_screen():
     st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
 
 with st.sidebar:
-    st.title('Knowledge Bases for Amazon Bedrock and LangChain 🦜️🔗')
+    st.title('Green Mountain Girls Farm Instruction Manual Assistant')
+    
     streaming_on = st.checkbox('Streaming')
     st.button('Clear Screen', on_click=clear_screen)
+    st.divider()
+    st.button("Logout", "logout_btn", on_click=logout)
 
 # Store LLM generated responses
 if "messages" not in st.session_state:
@@ -159,3 +179,4 @@ if user_prompt := st.chat_input():
                     st.error("No valid context retrieved.")
             else:
                 st.error("No context retrieved.")
+
