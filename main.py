@@ -1,7 +1,6 @@
 import streamlit as st
-import time
 from dotenv import load_dotenv
-import os
+
 
 import boto3
 from langchain_core.prompts import ChatPromptTemplate
@@ -10,15 +9,28 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_community.chat_models import BedrockChat
 from langchain_community.retrievers import AmazonKnowledgeBasesRetriever
 from streamlit_cognito_auth import CognitoAuthenticator
+from botocore.exceptions import ClientError
+from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
+import botocore.session
+import json
+
+client = botocore.session.get_session().create_client('secretsmanager')
+cache_config = SecretCacheConfig()
+cache = SecretCache( config = cache_config, client = client)
+
+secret = json.loads(cache.get_secret_string('gmgf_secrets'))
+
+
+
 load_dotenv()
 # Set page configuration
 st.set_page_config(page_title='Green Mountain Girls Farm Instruction Manual Assistant')
 
 
 authenticator = CognitoAuthenticator(
-    pool_id=os.environ.get('POOL_ID'),
-    app_client_id=os.environ.get('CLIENT_ID'),
-    app_client_secret=os.environ.get('CLIENT_SECRET'),
+    pool_id=secret['POOL_ID'],
+    app_client_id=secret['CLIENT_ID'],
+    app_client_secret=secret['CLIENT_SECRET'],
     use_cookies=True
 )
 
@@ -34,7 +46,7 @@ def logout():
 # ------------------------------------------------------
 # Amazon Bedrock - settings
 try:
-    session = boto3.Session(profile_name=os.getenv('AWS_PROFILE_NAME'))
+    session = boto3.Session(profile_name=secret['AWS_PROFILE_NAME'])
     bedrock_runtime = session.client(
         service_name="bedrock-runtime",
         region_name="us-east-1",
@@ -65,7 +77,7 @@ prompt_template = ChatPromptTemplate.from_template(template)
 # Amazon Bedrock - KnowledgeBase Retriever
 try:
     retriever = AmazonKnowledgeBasesRetriever(
-        knowledge_base_id=os.getenv('BEDROCK_KNOWLEDGE_BASE_ID'),
+        knowledge_base_id=secret['BEDROCK_KNOWLEDGE_BASE_ID'],
         retrieval_config={"vectorSearchConfiguration": {"numberOfResults": 4}},  # Retrieve multiple passages
     )
 except Exception as e:
