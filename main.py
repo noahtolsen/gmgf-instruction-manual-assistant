@@ -98,8 +98,14 @@ prompt_template = ChatPromptTemplate.from_template(template)
 
 # Amazon Bedrock - KnowledgeBase Retriever
 try:
+    # Create the AmazonKnowledgeBasesRetriever with explicit credentials
+    credentials = session.get_credentials()
     retriever = AmazonKnowledgeBasesRetriever(
         knowledge_base_id=secret['BEDROCK_KNOWLEDGE_BASE_ID'],
+        region_name=os.getenv('AWS_REGION'),
+        aws_access_key_id=credentials.access_key,
+        aws_secret_access_key=credentials.secret_key,
+        aws_session_token=credentials.token,
         retrieval_config={"vectorSearchConfiguration": {"numberOfResults": 4}},  # Retrieve multiple passages
     )
     print("Successfully created AmazonKnowledgeBasesRetriever")
