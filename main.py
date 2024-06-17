@@ -19,7 +19,7 @@ authenticator = CognitoAuthenticator(
     pool_id=os.environ.get('POOL_ID'),
     app_client_id=os.environ.get('CLIENT_ID'),
     app_client_secret=os.environ.get('CLIENT_SECRET'),
-    use_cookies=False
+    use_cookies=True
 )
 
 is_logged_in = authenticator.login()
@@ -108,7 +108,7 @@ for message in st.session_state.messages:
         st.write(message["content"])
 
 # Selection of tractor model
-tractor_models = ["Woodchipper", "Zero Turn Mower", "Steam Kettle Scalder"]  # Replace with actual models
+tractor_models = ["Woodchipper", "Zero Turn Mower", "Steam Kettle Scalder", "Antonio Carraro serie 30", "Freeaire Walk-In", "Salad Dryer", "Gator", "Antonio Carraro TRX 7800 S", "Turbo air refrigerator"]  # Replace with actual models
 selected_model = st.selectbox("Select the piece of equipment you need help with:", tractor_models)
 
 # Chat Input - User Prompt
