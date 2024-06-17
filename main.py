@@ -45,7 +45,7 @@ def logout():
 # ------------------------------------------------------
 # Amazon Bedrock - settings
 try:
-    session = boto3.Session(profile_name=secret['AWS_PROFILE_NAME'])
+    session = boto3.Session(region_name='us-east-1')
     bedrock_runtime = session.client(
         service_name="bedrock-runtime",
         region_name="us-east-1",
