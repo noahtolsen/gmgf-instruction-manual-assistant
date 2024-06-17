@@ -1,7 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
 
-
 import boto3
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
@@ -13,19 +12,28 @@ from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
 import botocore.session
 import json
 
-client = botocore.session.get_session().create_client('secretsmanager', region_name='us-east-1')
-cache_config = SecretCacheConfig()
-cache = SecretCache( config = cache_config, client = client)
+# Debugging: Print environment variables to ensure AWS_REGION is set correctly
+import os
+print("AWS_REGION:", os.getenv('AWS_REGION'))
 
-secret = json.loads(cache.get_secret_string('gmgf_secrets'))
+# Create a botocore session and specify the region
+try:
+    botocore_session = botocore.session.get_session()
+    client = botocore_session.create_client('secretsmanager', region_name='us-east-1')
+    cache_config = SecretCacheConfig()
+    cache = SecretCache(config=cache_config, client=client)
+    secret = json.loads(cache.get_secret_string('gmgf_secrets'))
+except Exception as e:
+    st.error(f"Error accessing Secrets Manager: {e}")
+    st.stop()
 
-
-
+# Load environment variables
 load_dotenv()
-# Set page configuration
+
+# Set Streamlit page configuration
 st.set_page_config(page_title='Green Mountain Girls Farm Instruction Manual Assistant')
 
-
+# Initialize the CognitoAuthenticator
 authenticator = CognitoAuthenticator(
     pool_id=secret['POOL_ID'],
     app_client_id=secret['CLIENT_ID'],
@@ -33,10 +41,10 @@ authenticator = CognitoAuthenticator(
     use_cookies=True
 )
 
+# Check login status
 is_logged_in = authenticator.login()
 if not is_logged_in:
     st.stop()
-
 
 def logout():
     print("Logout in example")
@@ -45,6 +53,7 @@ def logout():
 # ------------------------------------------------------
 # Amazon Bedrock - settings
 try:
+    # Create a Boto3 session without specifying a profile
     session = boto3.Session(region_name='us-east-1')
     bedrock_runtime = session.client(
         service_name="bedrock-runtime",
@@ -94,8 +103,6 @@ chain = (
     .assign(response=prompt_template | model | StrOutputParser())
     .pick(["response", "context"])
 )
-
-
 
 # Clear Chat History function
 def clear_screen():
@@ -190,4 +197,3 @@ if user_prompt := st.chat_input():
                     st.error("No valid context retrieved.")
             else:
                 st.error("No context retrieved.")
-
