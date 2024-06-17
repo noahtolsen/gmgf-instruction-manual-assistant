@@ -9,7 +9,6 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_community.chat_models import BedrockChat
 from langchain_community.retrievers import AmazonKnowledgeBasesRetriever
 from streamlit_cognito_auth import CognitoAuthenticator
-from botocore.exceptions import ClientError
 from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
 import botocore.session
 import json
