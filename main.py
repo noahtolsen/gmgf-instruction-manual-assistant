@@ -11,6 +11,7 @@ from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
 import botocore.session
 import json
 import os
+import requests 
 
 # Load environment variables
 load_dotenv()
