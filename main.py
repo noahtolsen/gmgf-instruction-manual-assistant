@@ -21,6 +21,17 @@ os.environ['AWS_REGION'] = 'us-east-1'  # Replace 'us-east-1' with your desired 
 # Debugging: Print environment variables to ensure AWS_REGION is set correctly
 print("AWS_REGION:", os.getenv('AWS_REGION'))
 
+# Function to retrieve the current credentials and log them for debugging
+def log_current_credentials(session):
+    credentials = session.get_credentials()
+    if credentials:
+        credentials = credentials.get_frozen_credentials()
+        print(f"AWS Access Key: {credentials.access_key}")
+        print(f"AWS Secret Key: {credentials.secret_key[:4]}...")  # Hide most of the secret key for security
+        print(f"AWS Session Token: {credentials.token}")
+    else:
+        print("No credentials found")
+
 # Create a botocore session and specify the region
 try:
     botocore_session = botocore.session.get_session()
@@ -28,6 +39,7 @@ try:
     cache_config = SecretCacheConfig()
     cache = SecretCache(config=cache_config, client=client)
     secret = json.loads(cache.get_secret_string('gmgf_secrets'))
+    print("Successfully retrieved secrets from Secrets Manager")
 except Exception as e:
     st.error(f"Error accessing Secrets Manager: {e}")
     st.stop()
@@ -52,15 +64,16 @@ def logout():
     print("Logout in example")
     authenticator.logout()
 
-# ------------------------------------------------------
 # Amazon Bedrock - settings
 try:
     # Create a Boto3 session without specifying a profile
     session = boto3.Session(region_name=os.getenv('AWS_REGION'))
+    log_current_credentials(session)  # Log the current credentials for debugging
     bedrock_runtime = session.client(
         service_name="bedrock-runtime",
         region_name=os.getenv('AWS_REGION'),
     )
+    print("Successfully created Bedrock runtime client")
 except Exception as e:
     st.error(f"Error creating AWS session: {e}")
     st.stop()
@@ -75,7 +88,6 @@ model_kwargs = {
     "stop_sequences": ["\n\nHuman"],
 }
 
-# ------------------------------------------------------
 # LangChain - RAG chain with citations
 template = '''Answer the question based only on the following context:
 {context}
@@ -90,6 +102,7 @@ try:
         knowledge_base_id=secret['BEDROCK_KNOWLEDGE_BASE_ID'],
         retrieval_config={"vectorSearchConfiguration": {"numberOfResults": 4}},  # Retrieve multiple passages
     )
+    print("Successfully created AmazonKnowledgeBasesRetriever")
 except Exception as e:
     st.error(f"Error creating AmazonKnowledgeBasesRetriever: {e}")
     st.stop()
