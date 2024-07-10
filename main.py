@@ -12,13 +12,13 @@ import botocore.session
 import json
 import os
 
-# Load environment variables
+
 load_dotenv()
 
-# Ensure the AWS region is set
-os.environ['AWS_REGION'] = 'us-east-1'  # Replace 'us-east-1' with your desired region
 
-# Create a botocore session and specify the region
+os.environ['AWS_REGION'] = 'us-east-1'
+
+
 try:
     botocore_session = botocore.session.get_session()
     client = botocore_session.create_client('secretsmanager', region_name=os.getenv('AWS_REGION'))
@@ -29,10 +29,10 @@ except Exception as e:
     st.error(f"Error accessing Secrets Manager: {e}")
     st.stop()
 
-# Set Streamlit page configuration
+
 st.set_page_config(page_title='Green Mountain Girls Farm Instruction Manual Assistant')
 
-# Initialize the CognitoAuthenticator
+
 authenticator = CognitoAuthenticator(
     pool_id=secret['POOL_ID'],
     app_client_id=secret['CLIENT_ID'],
@@ -40,7 +40,7 @@ authenticator = CognitoAuthenticator(
     use_cookies=True
 )
 
-# Check login status
+
 is_logged_in = authenticator.login()
 if not is_logged_in:
     st.stop()
@@ -48,9 +48,8 @@ if not is_logged_in:
 def logout():
     authenticator.logout()
 
-# Amazon Bedrock - settings
+
 try:
-    # Create a Boto3 session without specifying a profile
     session = boto3.Session(region_name=os.getenv('AWS_REGION'))
     bedrock_runtime = session.client(
         service_name="bedrock-runtime",
@@ -70,7 +69,7 @@ model_kwargs = {
     "stop_sequences": ["\n\nHuman"],
 }
 
-# LangChain - RAG chain with citations
+
 template = '''Answer the question based only on the following context:
 {context}
 
@@ -78,9 +77,8 @@ Question: {question}'''
 
 prompt_template = ChatPromptTemplate.from_template(template)
 
-# Amazon Bedrock - KnowledgeBase Retriever
+
 try:
-    # Create the AmazonKnowledgeBasesRetriever with explicit credentials
     credentials = session.get_credentials()
     retriever = AmazonKnowledgeBasesRetriever(
         knowledge_base_id=secret['BEDROCK_KNOWLEDGE_BASE_ID'],
@@ -88,7 +86,7 @@ try:
         aws_access_key_id=credentials.access_key,
         aws_secret_access_key=credentials.secret_key,
         aws_session_token=credentials.token,
-        retrieval_config={"vectorSearchConfiguration": {"numberOfResults": 4}},  # Retrieve multiple passages
+        retrieval_config={"vectorSearchConfiguration": {"numberOfResults": 4}},
     )
 except Exception as e:
     st.error(f"Error creating AmazonKnowledgeBasesRetriever: {e}")
@@ -106,7 +104,6 @@ chain = (
     .pick(["response", "context"])
 )
 
-# Clear Chat History function
 def clear_screen():
     st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
 
@@ -118,20 +115,18 @@ with st.sidebar:
     st.divider()
     st.button("Logout", "logout_btn", on_click=logout)
 
-# Store LLM generated responses
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
 
-# Display chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-# Selection of tractor model
+
 tractor_models = ["Woodchipper", "Zero Turn Mower", "Steam Kettle Scalder", "Antonio Carraro serie 30", "Freeaire Walk-In", "Salad Dryer", "Gator", "Antonio Carraro TRX 7800 S", "Turbo air refrigerator"]  # Replace with actual models
 selected_model = st.selectbox("Select the piece of equipment you need help with:", tractor_models)
 
-# Chat Input - User Prompt
+
 if user_prompt := st.chat_input():
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     with st.chat_message("user"):
@@ -140,12 +135,10 @@ if user_prompt := st.chat_input():
     query_context = f"Tractor Model: {selected_model}\n{user_prompt}"
 
     if streaming_on:
-        # Chain - Stream
         with st.chat_message("assistant"):
             placeholder = st.empty()
             full_response = ''
             full_context = []
-            # Chain Stream
             for chunk in chain.stream(query_context):
                 if 'response' in chunk:
                     full_response += chunk['response']
@@ -153,9 +146,7 @@ if user_prompt := st.chat_input():
                 elif 'context' in chunk:
                     full_context.extend(chunk['context'])
 
-            # Check if full_context is non-empty
             if full_context:
-                # Filter out non-Document objects
                 full_context = [doc for doc in full_context if hasattr(doc, 'metadata')]
 
                 if full_context:
@@ -174,21 +165,16 @@ if user_prompt := st.chat_input():
             else:
                 st.error("No context retrieved.")
     else:
-        # Chain - Invoke
         with st.chat_message("assistant"):
             response = chain.invoke(query_context)
 
-            # Check if response['context'] is non-empty
             if response['context']:
-                # Filter out non-Document objects
                 response['context'] = [doc for doc in response['context'] if hasattr(doc, 'metadata')]
 
                 if response['context']:
-                    # Identify the top document based on confidence score
                     top_document = max(response['context'], key=lambda x: x.metadata.get('score', 0))
                     top_document_uri = top_document.metadata['source_metadata']['x-amz-bedrock-kb-source-uri']
 
-                    # Filter passages to only include those from the top document
                     filtered_context = [ctx for ctx in response['context'] if ctx.metadata['source_metadata']['x-amz-bedrock-kb-source-uri'] == top_document_uri]
 
                     st.write(response['response'])
